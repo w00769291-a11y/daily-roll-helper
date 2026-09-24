@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Camera, StopCircle, UserRound, CheckCircle2, QrCode, ScanFace, Loader2 } from "lucide-react";
 import { captureVideoFrame } from "@/lib/image";
-import { loadFaceApi, descriptorFor, descriptorForPhoto, distance, MATCH_THRESHOLD } from "@/lib/face";
+import { loadFaceApi, descriptorForLive, descriptorForPhoto, distance, MATCH_THRESHOLD } from "@/lib/face";
 import type { PersonKind } from "./PersonManager";
 
 interface P { id: string; full_name: string; code: string; photo_url: string | null; kind: PersonKind }
@@ -34,7 +34,10 @@ export default function AttendanceScanner() {
   const [result, setResult] = useState<{ person: P; type: "in" | "out"; snapshot: string | null; at: string } | null>(null);
   const cooldownRef = useRef<string | null>(null);
 
-  useEffect(() => () => { void stopAll(); }, []);
+  useEffect(() => {
+    loadFaceApi().catch(() => {}); // preload face models as soon as the page opens
+    return () => { void stopAll(); };
+  }, []);
 
   function speak(text: string) {
     try {
@@ -105,7 +108,7 @@ export default function AttendanceScanner() {
       try {
         const ref = await descriptorForPhoto(person.id, person.photo_url);
         if (ref) {
-          const live = await descriptorFor(video);
+          const live = await descriptorForLive(video);
           if (!live) { toast.error("No face seen — look at the camera and scan again"); speak("Face not detected"); setStatus("Show your QR code to the camera"); return; }
           if (distance(ref, live) > MATCH_THRESHOLD) {
             toast.error(`Face does not match ${person.full_name}`); speak("Face does not match"); setStatus("Show your QR code to the camera"); return;
@@ -157,7 +160,7 @@ export default function AttendanceScanner() {
     const v = faceVideoRef.current;
     if (!streamRef.current || !v) return;
     try {
-      const live = await descriptorFor(v);
+      const live = await descriptorForLive(v);
       if (live) {
         let best: Known | null = null; let bestD = Infinity;
         for (const k of knownRef.current) { const d = distance(k.desc, live); if (d < bestD) { bestD = d; best = k; } }
@@ -172,7 +175,7 @@ export default function AttendanceScanner() {
         }
       }
     } catch { /* ignore frame errors */ }
-    if (streamRef.current) loopRef.current = setTimeout(tick, 700);
+    if (streamRef.current) loopRef.current = setTimeout(tick, 300);
   }
 
   // ---------- shared ----------
