@@ -34,7 +34,7 @@ export async function ensureRoleClaimed(): Promise<void> {
   await supabase.rpc("claim_role", {
     _role: desired,
     _full_name: fullName,
-    _department: department ?? undefined,
+    _department: department ?? "",
   });
 }
 
