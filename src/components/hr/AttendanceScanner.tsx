@@ -125,13 +125,6 @@ export default function AttendanceScanner() {
     return data?.punch_type === "in" ? "out" : "in";
   }
 
-  async function manualPunch(type: "in" | "out") {
-    const person = people.find((p) => p.id === selectedId);
-    if (!person) { toast.error("Select someone first"); return; }
-    setProcessing(true);
-    await punch(person, type, captureVideoFrame(videoEl()));
-    setProcessing(false);
-  }
 
   return (
     <div className="space-y-4">
