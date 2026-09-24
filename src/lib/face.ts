@@ -1,7 +1,7 @@
 // Browser-only face recognition helpers (loaded lazily so SSR never imports the library).
 type FaceApi = typeof import("@vladmandic/face-api");
 
-const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model";
+const MODEL_URL = "/model"; // bundled locally in public/model for instant loading
 export const MATCH_THRESHOLD = 0.5;
 
 let apiPromise: Promise<FaceApi> | null = null;
@@ -33,13 +33,18 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export async function descriptorFor(input: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement): Promise<Float32Array | null> {
+export async function descriptorFor(input: HTMLImageElement | HTMLVideoElement | HTMLCanvasElement, inputSize = 320): Promise<Float32Array | null> {
   const faceapi = await loadFaceApi();
   const res = await faceapi
-    .detectSingleFace(input, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+    .detectSingleFace(input, new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold: 0.45 }))
     .withFaceLandmarks()
     .withFaceDescriptor();
   return res?.descriptor ?? null;
+}
+
+// Fast path for live camera frames: smaller input = much quicker detection.
+export function descriptorForLive(input: HTMLVideoElement | HTMLCanvasElement): Promise<Float32Array | null> {
+  return descriptorFor(input, 160);
 }
 
 export async function descriptorForPhoto(key: string, src: string): Promise<Float32Array | null> {
